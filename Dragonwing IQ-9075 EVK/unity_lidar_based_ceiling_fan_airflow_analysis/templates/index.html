@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+	<!--link to icon -->
+	<link rel="icon" type="image/png"  href="{{ url_for('static', filename='icon.png') }}">	
+    <title>VLM-driven Airflow Analysis</title>
+    <style>
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #0f172a; 
+            color: #f8fafc; 
+            margin: 0; 
+            padding: 1rem; 
+        }
+        
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: #1e293b; 
+            padding: 1.5rem; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+        }
+        
+        h1 { 
+            margin-top: 0; 
+            color: #38bdf8; 
+            font-size: 1.5rem; 
+            line-height: 1.25;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+        }
+        
+        .status { 
+            display: flex; 
+            flex-wrap: wrap;
+            gap: 0.5rem; 
+            margin-bottom: 1.25rem; 
+        }
+        
+        .badge { 
+            background: #334155; 
+            padding: 0.5rem 0.75rem; 
+            border-radius: 6px; 
+            font-size: 0.8rem; 
+            border: 1px solid #475569; 
+            flex: 1 1 auto;
+            text-align: center;
+        }
+        
+        .badge span { color: #4ade80; font-weight: bold; }
+        
+        .section-label { font-weight: bold; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; }
+
+        .form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1.25rem; }
+        
+        /* Font-size 16px prevents iOS Safari auto-zoom on touch */
+        select, textarea { 
+            width: 100%; 
+            background: #0f172a; 
+            border: 1px solid #475569; 
+            color: #fff; 
+            padding: 0.75rem; 
+            border-radius: 6px; 
+            font-size: 1rem; 
+            -webkit-appearance: none;
+        }
+        select:focus, textarea:focus { outline: none; border-color: #38bdf8; }
+        textarea { resize: vertical; min-height: 70px; }
+
+        /* Responsive 16 Frame Options Grid */
+        .frame-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.6rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .frame-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 0.75rem 0.6rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .frame-card:hover {
+            border-color: #38bdf8;
+            background: #1e293b;
+        }
+
+        .frame-card.selected {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.12);
+            box-shadow: 0 0 0 1px #38bdf8;
+        }
+
+        .frame-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .frame-card .frame-count {
+            color: #38bdf8;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .frame-card .frame-fps {
+            font-size: 0.68rem;
+            background: #334155;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #cbd5e1;
+        }
+
+        .frame-card .attr-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .frame-card .attr-desc {
+            font-size: 0.68rem;
+            color: #94a3b8;
+            margin-top: 2px;
+            line-height: 1.15;
+        }
+
+        button { 
+            background: #0284c7; 
+            color: white; 
+            border: none; 
+            padding: 0.55rem 1rem; 
+            font-size: 0.88rem; 
+            font-weight: 600; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+            width: 100%; 
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover { background: #0369a1; }
+        button:active { background: #075985; }
+        button:disabled { background: #475569; cursor: not-allowed; }
+        
+        #output { 
+            margin-top: 1.25rem; 
+            background: #0f172a; 
+            border: 1px solid #334155; 
+            padding: 1rem; 
+            border-radius: 6px; 
+            white-space: pre-wrap; 
+            min-height: 100px; 
+            font-family: monospace; 
+            font-size: 0.85rem;
+            line-height: 1.5; 
+            color: #e2e8f0; 
+            overflow-x: auto;
+        }
+        
+        .video-container { margin-top: 1.5rem; display: none; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 6px; border: 1px solid #334155; background: #0f172a; }
+        .video-wrapper video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+
+        .spinner { aspect-ratio: 1/1; display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Tablet Breakpoint */
+        @media (max-width: 768px) {
+            body { padding: 0.5rem; }
+            .container { padding: 1rem; }
+            .frame-grid { grid-template-columns: repeat(2, 1fr); }
+            h1 { font-size: 1.35rem; }
+        }
+
+        /* Mobile Phone Breakpoint */
+        @media (max-width: 480px) {
+            .frame-grid { grid-template-columns: 1fr; }
+            .badge { width: 100%; text-align: left; }
+            .status { flex-direction: column; }
+            button {
+                font-size: 0.82rem;
+                padding: 0.5rem 0.75rem;
+                min-height: 38px;
+            }		
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VLM-driven Ceiling Fan Airflow Analysis with Unity</h1>
+        
+        <div class="status">
+            <div class="badge">RPLIDAR A1 UDP: <span>Streaming (5005)</span></div>
+            <div class="badge">Unity Frame Server: <span>Active (8080)</span></div>
+            <div class="badge">VLM Docker Container : <span>Active (9001)</span></div>
+        </div>
+
+        <div class="form-group">
+            <label for="modelSelect" class="section-label">Select VLM model:</label>
+            <select id="modelSelect">
+                <option value="qwen2_5_vl_7b_instruct" selected>Qwen2.5-VL-7B-Instruct</option>
+                <option value="qwen3_vl_8b_instruct">Qwen3-VL-8B-Instruct</option>
+            </select>
+        </div>
+
+        <span class="section-label">Select the ceiling fan airflow state represented by the frame number:</span>
+        <div class="frame-grid" id="frameGrid">
+            <!-- 16 Configurable Options -->
+            <div class="frame-card" selected-frame="1" dispersion-state="1" fan-strength="1">
+                <div class="card-header"><span class="frame-count">1st Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 1</div>
+                <div class="attr-desc">Fan strength: 1</div>
+            </div>
+            <div class="frame-card" selected-frame="2" dispersion-state="2" fan-strength="1">
+                <div class="card-header"><span class="frame-count">2nd Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 2</div>
+                <div class="attr-desc">Fan strength: 1</div>
+            </div>
+            <div class="frame-card" selected-frame="3" dispersion-state="3" fan-strength="1">
+                <div class="card-header"><span class="frame-count">3rd Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 3</div>
+                <div class="attr-desc">Fan strength: 1</div>
+            </div>
+            <div class="frame-card" selected-frame="4" dispersion-state="4" fan-strength="1">
+                <div class="card-header"><span class="frame-count">4th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 4</div>
+                <div class="attr-desc">Fan strength: 1</div>
+            </div>
+            <div class="frame-card" selected-frame="5" dispersion-state="1" fan-strength="2">
+                <div class="card-header"><span class="frame-count">5th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 1</div>
+                <div class="attr-desc">Fan strength: 2</div>
+            </div>
+            <div class="frame-card" selected-frame="6" dispersion-state="2" fan-strength="2">
+                <div class="card-header"><span class="frame-count">6th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 2</div>
+                <div class="attr-desc">Fan strength: 2</div>
+            </div>
+            <div class="frame-card" selected-frame="7" dispersion-state="3" fan-strength="2">
+                <div class="card-header"><span class="frame-count">7th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 3</div>
+                <div class="attr-desc">Fan strength: 2</div>
+            </div>
+            <div class="frame-card" selected-frame="8" dispersion-state="4" fan-strength="2">
+                <div class="card-header"><span class="frame-count">8th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 4</div>
+                <div class="attr-desc">Fan strength: 2</div>
+            </div>
+            <div class="frame-card" selected-frame="9" dispersion-state="1" fan-strength="3">
+                <div class="card-header"><span class="frame-count">9th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 1</div>
+                <div class="attr-desc">Fan strength: 3</div>
+            </div>
+            <div class="frame-card" selected-frame="10" dispersion-state="2" fan-strength="3">
+                <div class="card-header"><span class="frame-count">10th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 2</div>
+                <div class="attr-desc">Fan strength: 3</div>
+            </div>
+            <div class="frame-card" selected-frame="11" dispersion-state="3" fan-strength="3">
+                <div class="card-header"><span class="frame-count">11th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 3</div>
+                <div class="attr-desc">Fan strength: 3</div>
+            </div>
+            <div class="frame-card" selected-frame="12" dispersion-state="4" fan-strength="3">
+                <div class="card-header"><span class="frame-count">12th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 4</div>
+                <div class="attr-desc">Fan strength: 3</div>
+            </div>
+            <div class="frame-card" selected-frame="13" dispersion-state="1" fan-strength="4">
+                <div class="card-header"><span class="frame-count">13th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 1</div>
+                <div class="attr-desc">Fan strength: 4</div>
+            </div>
+            <div class="frame-card" selected-frame="14" dispersion-state="2" fan-strength="4">
+                <div class="card-header"><span class="frame-count">14th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 2</div>
+                <div class="attr-desc">Fan strength: 4</div>
+            </div>
+            <div class="frame-card" selected-frame="15" dispersion-state="3" fan-strength="4">
+                <div class="card-header"><span class="frame-count">15th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 3</div>
+                <div class="attr-desc">Fan strength: 4</div>
+            </div>
+            <div class="frame-card" selected-frame="16" dispersion-state="4" fan-strength="4">
+                <div class="card-header"><span class="frame-count">16th Frame</span><span class="frame-fps">1 FPS</span></div>
+                <div class="attr-title">Dispersion state: 4</div>
+                <div class="attr-desc">Fan strength: 4</div>
+            </div>			
+
+        </div>
+
+        <div class="form-group">
+            <label for="prompt" class="section-label">Enter VLM prompt:</label>
+            <textarea id="prompt" rows="6" placeholder="Please select a ceiling fan airflow state to provide an image (frame) to the selected VLM model! You can use the generated prompt or enter a specific query."></textarea>
+        </div>
+        
+        <button id="triggerBtn" onclick="runAnalysis()">Obtain Unity Frames & Analyze</button>
+
+        <h3>VLM Analysis Output</h3>
+        <div id="output">By clicking the button above, initiate capturing frame instances from Unity and run model inference on the selected frame of the produced Unity video...</div>
+
+        <!-- Video Player Section -->
+        <div id="videoContainer" class="video-container">
+            <h3>Recorded Unity Frame Sequence (Video)</h3>
+            <div class="video-wrapper">
+				<video id="videoFrameCon" controls muted playsinline >
+				  <source id="videoFrame" src="" type="video/mp4">
+				</video>
+            </div>
+        </div>
+    </div>
+
+    <script>
+	    const prompt_container = document.getElementById('prompt');
+	    // Define the dispersion states' vertical and horizontal angle conditions.
+		const dispersion_angles = [
+			[90, 180],
+			[60, 90],
+			[30, 0],
+			[0, 180]
+		];
+		// Given frame attributes.
+        let givenFrameNumber = 0;
+		let givenFrameTitle = "";
+        let givenFanStrength = 0;
+		let givenDispersionState = 0;
+		let vlm_prompt = "";
+
+        // Frame state option configurations.
+        document.querySelectorAll('.frame-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.frame-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                givenFrameNumber = parseInt(card.getAttribute('selected-frame'), 10);
+				givenFrameTitle = card.querySelector(".frame-count")?.innerText;
+                givenFanStrength = parseInt(card.getAttribute('fan-strength'), 10);
+                givenDispersionState = parseInt(card.getAttribute('dispersion-state'), 10);
+				// Update the VLM prompt (input) according to the given ceiling fan airflow parameters.
+				vlm_prompt = `The picture represents a ceiling fan airflow simulation. Blue trails indicate lower-energy, while red indicates higher-energy. Orange points represent obstacles in the room. Ceiling fans have four fan strength levels and are able to move 180° vertically and 360° horizontally. In the frame, fan strength is ${givenFanStrength}, and the fans are at ${dispersion_angles[givenDispersionState-1][0]}° vertical and ${dispersion_angles[givenDispersionState-1][1]}° horizontal. Based on the room layout and airflow, suggest the optimal ceiling fan strength and angles for efficient cooling.`
+                prompt_container.innerText = vlm_prompt;
+            });
+        });
+
+        async function runAnalysis() {
+		    // Pass the necessary inference and prompt information to the backend (Flask server).
+            const btn = document.getElementById('triggerBtn');
+            const output = document.getElementById('output');
+            const videoContainer = document.getElementById('videoContainer');
+            const videoFrame = document.getElementById('videoFrame');
+            const videoFrameCon = document.getElementById('videoFrameCon');
+            const model = document.getElementById('modelSelect').value;
+
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner"></span> Analyzing ceiling fan airflow state [${givenFrameTitle}] with ${model}...`;
+            output.innerText = `Requesting frame instances from Unity...\nThis may take a few seconds.`;
+            
+            videoContainer.style.display = "none";
+            videoFrame.src = "";
+
+            try {
+			    // Make an HTTP POST request to the Flask server to pass inference variables.
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        inference_info: {					
+							prompt: vlm_prompt,
+							model: model,
+							selected_frame: givenFrameNumber
+						}
+                    })
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    output.innerText = data.result;
+                    // Create the file path according to the Flask server rendering requirements.
+					const video_file_name = data.video_file_name;
+					const videoSrc = `/static/unity_airflow_videos/${video_file_name}`;
+                    videoFrame.src = videoSrc;
+                    videoContainer.style.display = "block";
+					// Play the dynamically updated video source.
+					videoFrameCon.load();
+					videoFrameCon.play().catch(err => console.log("Autoplay blocked:", err));
+                } else {
+                    output.innerText = "Error: " + data.message;
+                }
+            } catch (err) {
+                output.innerText = "Request Failed: " + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Obtain Unity Frames & Analyze';
+            }
+        }
+    </script>
+</body>
+</html>
