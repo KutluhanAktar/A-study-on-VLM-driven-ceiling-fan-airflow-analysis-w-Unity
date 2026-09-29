@@ -44,6 +44,10 @@ As a proof-of-concept research project, I did not focus on building a directly i
 # Inspect the project tutorial on:
 
 - **[kutluhanaktar.com](https://www.kutluhanaktar.com/projects/A_study_on_VLM_driven_ceiling_fan_airflow_analysis_w_Unity/)**
+- **[Hackster](https://www.hackster.io/kutluhan-aktar/a-study-on-vlm-driven-ceiling-fan-airflow-analysis-w-unity-9c8947)**
+- **[Instructables](https://www.instructables.com/A-Study-on-VLM-driven-Ceiling-Fan-Airflow-Analysis/)**
+- **[Arduino Project Hub](https://projecthub.arduino.cc/kutluhan_aktar)**
+- **[Hackaday](https://hackaday.io/project/206717-a-study-on-vlm-driven-ceiling-fan-airflow-analysis)**
 
 <img width="512" height="278" alt="model_design_0" src="https://github.com/user-attachments/assets/ba13f575-92b9-4907-9318-b594169cc46e" /><br>
 
